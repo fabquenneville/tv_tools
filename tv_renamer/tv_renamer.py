@@ -11,6 +11,7 @@
         noact       : dont act
         doubleep    : if video files contain two episodes each
         keepep      : keep the episode number
+        preserve    : Preserve the filename except for a marker (*** by default)
 '''
 
 # TODO functions commands to be revised
@@ -31,6 +32,9 @@ def load_arguments():
     arguments = {
         "options":list(),
         "paths":list(),
+        "marker":"***",
+        "fseparator":" - ",
+        "eseparator":" - ",
     }
 
     if len(sys.argv) >= 2:
@@ -43,6 +47,12 @@ def load_arguments():
         elif "-paths:" in arg:
             if len(arg[7:].split(",")[0]) > 0:
                 arguments["paths"] += arg[7:].split(",,")
+        elif "-marker:" in arg:
+            arguments["marker"] = arg[8:]
+        elif "-fseparator:" in arg:
+            arguments["fseparator"] = arg[12:]
+        elif "-eseparator:" in arg:
+            arguments["eseparator"] = arg[12:]
     
     paths = arguments["paths"]
     for n in range(len(paths)):
@@ -94,8 +104,32 @@ def replace_ss(parent_path, old = " ", new = "_"):
     return positive
 
 def add_numbering(arguments, parent_path, episode_per_file = 1):
-    ''' # TODO
+    ''' This function will replace a marker (*** by default) by a searialized and delimited episode number while preserving the rest of the naming
 
+    Example: calling add_numbering(arguments, parent_path) would result in:
+        from:
+        parent_path
+            Season 01
+                ***01.mkv
+                ***02.mkv
+                ...
+            Season 02
+                ***25.mkv
+                26,mkv
+                ...
+            ...
+
+        to:
+        parent_path
+            Season 01
+                S01E01 - 01.mkv
+                S01E02 - 02.mkv
+                ...
+            Season 02
+                S02E01 - 25.mkv
+                26,mkv
+                ...
+            ...
 
     Args:
         arguments: the options selected by the user
@@ -158,13 +192,13 @@ def add_numbering(arguments, parent_path, episode_per_file = 1):
                 if part_itt < 10:
                     partzero = "0"
                 
-                newepnum += f" - S{seasonzero}{season_nb}E{zero}{episode_itt} Part {partzero}{part_itt} - "
+                newepnum += f'{arguments["fseparator"]}S{seasonzero}{season_nb}E{zero}{episode_itt} Part {partzero}{part_itt}{arguments["eseparator"]}'
             else:
                 part_itt = 0
-                newepnum += f" - S{seasonzero}{season_nb}E{zero}{episode_itt} - "
+                newepnum += f'{arguments["fseparator"]}S{seasonzero}{season_nb}E{zero}{episode_itt}{arguments["eseparator"]}'
 
             # Print and/or act on the selected changes
-            newname = filelist[m].replace(" - ", newepnum, 1)
+            newname = filelist[m].replace(arguments["marker"], newepnum, 1)
             if "print" in arguments["options"]:
                 print(f"{folderlist[n]:<25}/{filelist[m]:<50} -> {folderlist[n]:<25}/{newname:<50}")
             if not "noact" in arguments["options"]:
@@ -175,6 +209,7 @@ def add_numbering(arguments, parent_path, episode_per_file = 1):
 def replace_absolute(arguments, parent_path, episode_per_file = 1):
     ''' Changes filenames from an absolute to season based names:
 
+    Example:
         from:
         parent_path
             Season 01
@@ -243,11 +278,11 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
                 
                 # If selected replace the episode number
                 if "keepep" in arguments["options"]:
-                    newepnum += f"S{seasonzero}{season_nb}E{oldepnum}"
+                    newepnum += f'{arguments["fseparator"]}S{seasonzero}{season_nb}E{oldepnum}'
                 else:
-                    newepnum += f"S{seasonzero}{season_nb}E{zero}{episode_itt}"
+                    newepnum += f'{arguments["fseparator"]}S{seasonzero}{season_nb}E{zero}{episode_itt}'
                 if i < episode_per_file:
-                    newepnum += f" - "
+                    newepnum += arguments["eseparator"]
                 newname = filelist[m].replace(oldepnum, newepnum, 1)
                 positive = True
             if "print" in arguments["options"]:

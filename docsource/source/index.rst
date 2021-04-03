@@ -7,12 +7,12 @@
 Welcome to tv_renamer's documentation!
 ==========================================
 
-tv_renamer is #TODO
+tv_renamer is a Python command line tool to rename TV episodes from an absolute to an aired order.
 
 * The source code can be found on `Github <https://github.com/fabquenneville/tv_renamer>`_
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Usage:
 
    usage/installation

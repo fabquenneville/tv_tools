@@ -2,8 +2,6 @@
 tv_renamer is a Python command line tool to rename TV episodes from an absolute to an aired order.
 
 The source can be found on the [Github](https://github.com/fabquenneville/tv_renamer).
-The installable can be found on the [Pypi page](https://pypi.python.org/pypi/tv_renamer).
-
 
 ## Documentation
 The documentation can be found on the [Github page](https://fabquenneville.github.io/tv_renamer/).
@@ -12,7 +10,6 @@ The documentation can be found on the [Github page](https://fabquenneville.githu
 Instalation instructions are found on the [Github page](https://fabquenneville.github.io/tv_renamer/usage/installation.html).
 
 ## Usage
-
 
 options:
     print       : print more detailed information
