@@ -12,7 +12,6 @@ The documentation can be found on the [Github page](https://fabquenneville.githu
 Instalation instructions are found on the [Github page](https://fabquenneville.github.io/tv_renamer/usage/installation.html).
 
 ## Usage
-tv_renamer -options:print,noact -paths:/mnt/media/
 
 
 options:
@@ -20,6 +19,9 @@ options:
     noact       : dont act
     doubleep    : if video files contain two episodes each
     keepep      : keep the episode number
+
+```
+tv_renamer -options:print,noact -paths:/mnt/media/
 ```
 
 ## Contributing
