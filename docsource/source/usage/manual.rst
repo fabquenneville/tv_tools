@@ -5,14 +5,15 @@ Manual
 Name
 ----
 
-tv_renamer
+tv_tools
 
 Synopsis
 --------
 
 .. code-block:: bash
 
-    ./tv_renamer.py
+    ./tv_tools.py
+        rename,organize
         [-options:print,noact,doubleep,keepep,preserve]
         [-paths:]
         [-marker:]
@@ -32,7 +33,7 @@ default options are:
 
 ::
 
-    Example: tv_renamer -options:print,noact -fseparator:"" -eseparator:"" -paths:"path"
+    tv_tools rename -options:print,noact -fseparator:"" -eseparator:"" -paths:"path"
     Before:
     parent_path
         Season 01
@@ -59,7 +60,43 @@ default options are:
 
 Description
 -----------
-tv_renamer is a Python command line tool to rename TV episodes from an absolute to an aired order.
+tv_tools is a Python command line tool to rename TV episodes from an absolute to an aired order.
+
+Commands
+--------
+
+rename
+======
+Use tv_tools to rename the files according to the options.
+
+organize
+========
+Use tv_tools to organize the episodes from a single folder to a season based organisation.
+
+::
+
+    tv_tools organize -paths:"path"
+
+    Before:
+    parent_path
+        S01E01.mkv
+        S01E02.mkv
+        ...
+        S02E01.mkv
+        S02E02.mkv
+        ...
+
+    after:
+    parent_path
+        Season 01
+            S01E01.mkv
+            S01E02.mkv
+            ...
+        Season 02
+            S02E01.mkv
+            S02E02.mkv
+            ...
+        ...
 
 Options
 -------
@@ -82,8 +119,7 @@ Keep the episode number and only prepend season numbers
 
 ::
 
-
-    Example: calling tv_renamer -fseparator:"" -eseparator:"" -options:keepep -paths:"path"
+    tv_tools rename -fseparator:"" -eseparator:"" -options:keepep -paths:"path"
 
     Before:
     parent_path
@@ -118,7 +154,7 @@ preserve
 
     *** by default
 
-    Example: calling tv_renamer -marker:"&&" -fseparator:"" -options:preserve -paths:"path"
+    tv_tools rename -marker:"&&" -fseparator:"" -options:preserve -paths:"path"
 
     Before:
     parent_path

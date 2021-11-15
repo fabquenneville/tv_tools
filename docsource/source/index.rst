@@ -1,15 +1,15 @@
-.. tv_renamer documentation master file, created by
+.. tv_tools documentation master file, created by
    sphinx-quickstart on Fri Nov 20 22:46:06 2020.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-==========================================
-Welcome to tv_renamer's documentation!
-==========================================
+====================================
+Welcome to tv_tools's documentation!
+====================================
 
-tv_renamer is a Python command line tool to rename TV episodes from an absolute to an aired order.
+tv_tools is a Python command line tool to rename TV episodes from an absolute to an aired order.
 
-* The source code can be found on `Github <https://github.com/fabquenneville/tv_renamer>`_
+* The source code can be found on `Github <https://github.com/fabquenneville/tv_tools>`_
 
 .. toctree::
    :maxdepth: 2
@@ -24,6 +24,7 @@ tv_renamer is a Python command line tool to rename TV episodes from an absolute 
    :maxdepth: 1
    :caption: Release Notes:
 
+   releasenotes/0.1.1-changelog
    releasenotes/0.0.1-changelog
 
 .. Indices and tables

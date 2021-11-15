@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'tv_renamer'
+project = 'tv_tools'
 copyright = '2020, Fabrice Quenneville'
 author = 'Fabrice Quenneville'
 version = '0.0.1'

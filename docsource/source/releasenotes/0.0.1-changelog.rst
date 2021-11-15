@@ -1,6 +1,6 @@
-==============================
-tv_renamer 0.0.1 Release Notes
-==============================
+============================
+tv_tools 0.0.1 Release Notes
+============================
 
 This release has been tested on Python 3.7 - 3.9
 
@@ -9,7 +9,7 @@ Highlights
 ==========
 
 First release, implemented the following features:
-* Feature
+* Renaming tv shows from arbitrary numbers to season based nomenclature
 
 Dropped Support
 ===============

@@ -1,22 +1,10 @@
 #!/usr/bin/env python3
 '''
-    tv_renamer is a Python command line tool to rename TV episodes from an absolute to an aired order.
-        * Rename all TV episodes in a file structure to the S00E00 standard
-    ex:
-    tv_renamer -options:print,noact -paths:/mnt/media/
-
-
-    options:
-        print       : print more detailed information
-        noact       : dont act
-        doubleep    : if video files contain two episodes each
-        keepep      : keep the episode number
-        preserve    : Preserve the filename except for a marker (*** by default)
+    These are various tools used by mediacurator
 '''
 
-# TODO functions commands to be revised
-
 import os
+import shutil
 import sys
 import re
 
@@ -30,6 +18,8 @@ def load_arguments():
     '''
 
     arguments = {
+        "rename":False,
+        "organize":False,
         "options":list(),
         "paths":list(),
         "marker":"***",
@@ -42,7 +32,11 @@ def load_arguments():
 
     for arg in sys.argv:
         # Confirm with the user that he selected to delete found files
-        if "-options:" in arg:
+        if "rename" in arg:
+            arguments["rename"] = True
+        elif "organize" in arg:
+            arguments["organize"] = True
+        elif "-options:" in arg:
             arguments["options"] += arg[9:].split(",")
         elif "-paths:" in arg:
             if len(arg[7:].split(",")[0]) > 0:
@@ -291,24 +285,48 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
                 os.rename(f"{parent_path}{folderlist[n]}/{filelist[m]}",f"{parent_path}{folderlist[n]}/{newname}")
     return positive
 
-def main():
-    ''' Controls the tasks
+def organize_episodes(path):
+    directories = []
+    files = []
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        directories.extend(dirnames)
+        files.extend(filenames)
+        break
+    
+    season_number = 1
+    run = True
+    while run:
+        season_formated_number = str(season_number).zfill(2)
+        if season_number > 99:
+            season_formated_number = str(season_number).zfill(3)
+        folder_name = f"Season {season_formated_number}"
+        season_substring = f"S{season_formated_number}"
 
-    Args:
+        run = False
+        for file in files:
+            if season_substring in file:
+                episodes_found = True
+                run = True
+                break
+        if not run:
+            break
 
-    Returns:
-    '''
-    arguments = load_arguments()
-    if len(arguments["paths"]) > 0:
-        for path in arguments["paths"]:
-            if "preserve" in arguments["options"]:
-                add_numbering(arguments = arguments, parent_path = path)
-            elif "doubleep" not in arguments["options"]:
-                replace_absolute(arguments = arguments, parent_path = path)
+        if folder_name not in directories:
+            if path[-1] == "/":
+                os.mkdir(path + folder_name)
+                print(f"Created directory: {path}{folder_name}")
             else:
-                replace_absolute(arguments = arguments, parent_path = path, episode_per_file = 2)
-                
+                os.mkdir(f"{path}/{folder_name}")
+                print(f"Created directory: {path}/{folder_name}")
+            directories.append(folder_name)
 
-if __name__ == '__main__':
-    main()
-
+        episodes_moved = 0
+        for filename in files:
+            if season_substring in filename:
+                if path[-1] == "/":
+                    shutil.move(f"{path}{filename}", f"{path}{folder_name}/{filename}")
+                else:
+                    shutil.move(f"{path}/{filename}", f"{path}/{folder_name}/{filename}")
+                episodes_moved += 1
+        print(f"Moved {episodes_moved} episodes for season {season_number}")
+        season_number += 1
