@@ -7,7 +7,7 @@ The source can be found on the [Github](https://github.com/fabquenneville/tv_too
 The documentation can be found on the [Github page](https://fabquenneville.github.io/tv_tools/).
 
 ## Releases
-Instalation instructions are found on the [Github page](https://fabquenneville.github.io/tv_tools/usage/installation.html).
+Information on the last release found on the [Github page](https://fabquenneville.github.io/tv_tools/usage/installation.html).
 
 ## Usage
 
