@@ -11,14 +11,21 @@ Instalation instructions are found on the [Github page](https://fabquenneville.g
 
 ## Usage
 
+commands:
+
+* rename: Rename files as per options.
+* organize: Organize tv episodes per season.
+
 options:
-    print       : print more detailed information
-    noact       : dont act
-    doubleep    : if video files contain two episodes each
-    keepep      : keep the episode number
+
+* print: Print more detailed information.
+* noact: Dont act.
+* doubleep: If video files contain two episodes each.
+* keepep: Keep the episode number.
 
 ```
-tv_tools -options:print,noact -paths:/mnt/media/
+tv_tools rename -options:print,noact -paths:/mnt/media/
+tv_tools organize -paths:/mnt/media/
 ```
 
 ## Contributing
