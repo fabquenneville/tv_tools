@@ -7,6 +7,9 @@ import os
 import shutil
 import sys
 import re
+import json
+
+from tmdbv3api import TMDb
 
 def load_arguments():
     ''' Get/load command parameters
@@ -18,8 +21,13 @@ def load_arguments():
     '''
 
     arguments = {
+        "auto":False,
         "rename":False,
         "organize":False,
+        "add_tmdb":False,
+        "print_config":False,
+        "key":None,
+        "token":None,
         "options":list(),
         "paths":list(),
         "marker":"***",
@@ -31,22 +39,17 @@ def load_arguments():
         arguments["action"] = sys.argv[1]
 
     for arg in sys.argv:
-        # Confirm with the user that he selected to delete found files
-        if "rename" in arg:
-            arguments["rename"] = True
-        elif "organize" in arg:
-            arguments["organize"] = True
-        elif "-options:" in arg:
-            arguments["options"] += arg[9:].split(",")
-        elif "-paths:" in arg:
-            if len(arg[7:].split(",")[0]) > 0:
-                arguments["paths"] += arg[7:].split(",,")
-        elif "-marker:" in arg:
-            arguments["marker"] = arg[8:]
-        elif "-fseparator:" in arg:
-            arguments["fseparator"] = arg[12:]
-        elif "-eseparator:" in arg:
-            arguments["eseparator"] = arg[12:]
+        if arg in ["auto", "rename", "organize", "add_tmdb", "print_config"]:
+            arguments[arg] = True
+        for paramhead in ["-key:", "-token:", "-marker:", "-fseparator:", "-eseparator:"]:
+            if paramhead in arg:
+                arguments[arg[1:len(paramhead) - 1]] = arg[len(paramhead):]
+        for paramhead in ["-options:"]:
+            if paramhead in arg:
+                arguments[arg[1:len(paramhead) - 1]] += arg[len(paramhead):].split(",")
+        for paramhead in ["-paths:"]:
+            if paramhead in arg:
+                arguments[arg[1:len(paramhead) - 1]] += arg[len(paramhead):].split(",,")
     
     paths = arguments["paths"]
     for n in range(len(paths)):
@@ -257,24 +260,17 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
             for i in range(episode_per_file):
                 episode_itt += 1
 
-                # Select number of zeros in season number
-                seasonzero = ""
-                zero = ""
-                if int(season_nb) < 10 and season_nb[0] != "0":
-                    seasonzero = "0"
-                
-                if len(filelist) >= 100 and episode_itt < 10:
-                    zero = "00"
-                elif len(filelist) >= 100 and episode_itt < 100:
-                    zero = "0"
-                elif episode_itt < 10:
-                    zero = "0"
+                season_zeros, episode_zeros = get_zeros(
+                    nb_season_items = len(filelist), # POSSIBLY BROKEN TODO
+                    season_nb = season_nb,
+                    episode_number = episode_itt
+                )
                 
                 # If selected replace the episode number
                 if "keepep" in arguments["options"]:
-                    newepnum += f'{arguments["fseparator"]}S{seasonzero}{season_nb}E{oldepnum}'
+                    newepnum += f'{arguments["fseparator"]}S{season_zeros}{season_nb}E{oldepnum}'
                 else:
-                    newepnum += f'{arguments["fseparator"]}S{seasonzero}{season_nb}E{zero}{episode_itt}'
+                    newepnum += f'{arguments["fseparator"]}S{season_zeros}{season_nb}E{episode_zeros}{episode_itt}'
                 if i < episode_per_file:
                     newepnum += arguments["eseparator"]
                 newname = filelist[m].replace(oldepnum, newepnum, 1)
@@ -285,7 +281,165 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
                 os.rename(f"{parent_path}{folderlist[n]}/{filelist[m]}",f"{parent_path}{folderlist[n]}/{newname}")
     return positive
 
-def organize_episodes(path):
+def replace_epiname_style_absolute(arguments, path, style_to = "standard"):
+    show_name = os.path.basename(os.path.normpath(path))
+    regex_from = re.compile(get_regexes("absolute"))
+    directories = []
+    files = []
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        directories.extend(dirnames)
+        files.extend(filenames)
+        break
+
+    files = sorted(files, key=lambda x: get_filenumber(x))
+    
+
+def replace_epiname_style(arguments, path, style_from, style_to = "standard"):
+    if style_from == "absolute":
+        return replace_epiname_style_absolute(arguments, path, style_to = "standard")
+    regex_from = re.compile(get_regexes(style_from))
+    directories = []
+    files = []
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        directories.extend(dirnames)
+        files.extend(filenames)
+        break
+    
+    for file in files:
+        # Removing file extension
+        filename = str(os.path.splitext(file)[0])
+        match = regex_from.search(filename)
+        if not match:
+            continue
+        
+        replaced = match[0]
+        replacing = ""
+        season_nb = None
+        episode_nb = None
+        nb_season_items = 0
+        if style_from == "xseparated":
+            season_nb = int(match[1])
+            episode_nb = int(match[2])
+            nb_season_items = len([episode for episode in files if int(regex_from.search(episode)[1]) == season_nb])
+        elif style_from == "flat":
+            if len(replaced) > 2 and len(replaced) <= 4:
+                season_nb = int(replaced[:-2])
+                episode_nb = int(replaced[-2:])
+                for episode in files:
+                    # Removing file extension
+                    episode = str(os.path.splitext(episode)[0])
+                    if regex_from.search(episode) and int(regex_from.search(episode)[0][:-2]) == season_nb:
+                        nb_season_items += 1
+        
+        season_zeros, episode_zeros = get_zeros(
+            nb_season_items = nb_season_items,
+            season_nb = season_nb,
+            episode_number = episode_nb
+        )
+        replacing = f'S{season_zeros}{season_nb}E{episode_zeros}{episode_nb}'
+        newname = filename.replace(replaced, replacing)
+        # Adding back extension
+        newname += str(os.path.splitext(file)[1])
+        
+        if "print" in arguments["options"]:
+            print(f"{file:<45} -> {newname:<45}")
+            
+        if not "noact" in arguments["options"]:
+            os.rename(os.path.join(path, file), os.path.join(path, newname))
+            
+
+
+def auto(arguments, path):
+    flat = False
+    directories = []
+    files = []
+    for (dirpath, dirnames, filenames) in os.walk(path):
+        directories.extend(dirnames)
+        files.extend(filenames)
+        break
+    if len(directories) == 0:
+        flat = True
+    
+    if flat:
+        original_epiname_style = get_epiname_style(files)
+        if original_epiname_style in ["xseparated", "flat", "absolute"]:
+            replace_epiname_style(arguments, path, original_epiname_style)
+            
+        organize_episodes(arguments, path)
+
+def get_zeros(nb_season_items, season_nb, episode_number):
+
+    # Select number of zeros in season number
+    season_zeros = ""
+    episode_zeros = ""
+    if not isinstance(nb_season_items, int):
+        nb_season_items = int(nb_season_items)
+    if not isinstance(season_nb, int):
+        season_nb = int(season_nb)
+    if not isinstance(episode_number, int):
+        episode_number = int(episode_number)
+    
+    if season_nb < 10:
+        season_zeros = "0"
+    if nb_season_items >= 100 and episode_number < 10:
+        episode_zeros = "00"
+    elif nb_season_items >= 100 and episode_number < 100:
+        episode_zeros = "0"
+    elif episode_number < 10:
+        episode_zeros = "0"
+    return season_zeros, episode_zeros
+    
+def get_epiname_style(files):
+    original_epiname_style = None
+    regexes = get_regexes("epinames_dict")
+    for file in files:
+        for epiname_style, regex in regexes.items():
+            regex = re.compile(regex)
+            if regex.search(file):
+                original_epiname_style = epiname_style
+                if original_epiname_style == "flat":
+                    first_number = get_first_number(files)
+                    if first_number <= 1:
+                        original_epiname_style = "absolute"
+                break
+        if original_epiname_style:
+            break
+    return original_epiname_style
+
+def get_filenumber(file):
+    # Removing file extension
+    filename = str(os.path.splitext(file)[0])
+    regex = re.compile(get_regexes("flat"))
+    match = regex.search(filename)
+    if not match:
+        return False
+    return int(match[0])
+
+def get_first_number(files):
+    files = sorted(files, key=lambda x: get_filenumber(x))
+    regex = re.compile(get_regexes("flat"))
+    for file in files:
+        # Removing file extension
+        file = str(os.path.splitext(file)[0])
+        if regex.search(file):
+            return int(regex.search(file)[0])
+    return False
+
+
+def get_regexes(filter = "epinames_dict"):
+    epinames = {
+        "standard":r"S([0-9]{2,3})E([0-9]{2,3})",
+        "standard_nozero":r"S([0-9]{1,3})E([0-9]{1,3})",
+        "standard_minuscule":r"s([0-9]{2,3})e([0-9]{2,3})",
+        "xseparated":r"([0-9]{1,3})x([0-9]{1,3})",
+        "flat":r"([0-9]{1,6})",
+    }
+    for epiname_style, regex in epinames.items():
+        if filter == epiname_style:
+            return regex
+    return epinames
+
+def organize_episodes(arguments, path):
     directories = []
     files = []
     for (dirpath, dirnames, filenames) in os.walk(path):
@@ -312,21 +466,22 @@ def organize_episodes(path):
             break
 
         if folder_name not in directories:
-            if path[-1] == "/":
-                os.mkdir(path + folder_name)
-                print(f"Created directory: {path}{folder_name}")
-            else:
-                os.mkdir(f"{path}/{folder_name}")
-                print(f"Created directory: {path}/{folder_name}")
+            fpath = os.path.join(path, folder_name)
+            
+            if "print" in arguments["options"]:
+                print(f"Created directory: {fpath}")
+
+            if not "noact" in arguments["options"]:
+                os.mkdir(fpath)
+            
             directories.append(folder_name)
 
         episodes_moved = 0
         for filename in files:
             if season_substring in filename:
-                if path[-1] == "/":
-                    shutil.move(f"{path}{filename}", f"{path}{folder_name}/{filename}")
-                else:
-                    shutil.move(f"{path}/{filename}", f"{path}/{folder_name}/{filename}")
+                if not "noact" in arguments["options"]:
+                    shutil.move(os.path.join(path, filename), os.path.join(path, folder_name, filename))
                 episodes_moved += 1
-        print(f"Moved {episodes_moved} episodes for season {season_number}")
+        if "print" in arguments["options"]:
+            print(f"Moved {episodes_moved} episodes for season {season_number}")
         season_number += 1

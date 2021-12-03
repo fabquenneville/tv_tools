@@ -18,12 +18,16 @@
 import os
 import shutil
 
+from pathlib import Path
+
 # Normal import
 try:
-    from tv_tools.library.tools import load_arguments, get_content, replace_ss, add_numbering, replace_absolute, organize_episodes
+    from tv_tools.library.tools import load_arguments, get_content, replace_ss, add_numbering, replace_absolute, organize_episodes, auto
+    from tv_tools.library.appconfig import AppConfig
 # Allow local import for development purposes
 except ModuleNotFoundError:
-    from library.tools import load_arguments, get_content, replace_ss, add_numbering, replace_absolute, organize_episodes
+    from library.tools import load_arguments, get_content, replace_ss, add_numbering, replace_absolute, organize_episodes, auto
+    from library.appconfig import AppConfig
 
 def main():
     ''' Controls the tasks
@@ -34,10 +38,22 @@ def main():
     '''
     arguments = load_arguments()
 
+    config = AppConfig({
+        "tmdb": {
+            "key":None,
+            "token":None
+        }
+    })
+
+    if arguments["auto"]:
+        if len(arguments["paths"]) > 0:
+            for path in arguments["paths"]:
+                auto(arguments, path)
+
     if arguments["organize"]:
         if len(arguments["paths"]) > 0:
             for path in arguments["paths"]:
-                organize_episodes(path)
+                organize_episodes(arguments, path)
                 
     if arguments["rename"]:
         if len(arguments["paths"]) > 0:
@@ -48,7 +64,19 @@ def main():
                     replace_absolute(arguments = arguments, parent_path = path)
                 else:
                     replace_absolute(arguments = arguments, parent_path = path, episode_per_file = 2)
+    
+    if arguments["print_config"]:
+        print(config)
                 
+    if arguments["add_tmdb"]:
+        if not arguments["key"]:
+            print("Missing -key argument")
+        if not arguments["token"]:
+            print("Missing -token argument")
+        config["tmdb"]["key"] = arguments["key"]
+        config["tmdb"]["token"] = arguments["token"]
+        config.save_config()
+
 
 if __name__ == '__main__':
     main()
