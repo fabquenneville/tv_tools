@@ -48,7 +48,7 @@ def main():
     if arguments["auto"]:
         if len(arguments["paths"]) > 0:
             for path in arguments["paths"]:
-                auto(arguments, path)
+                auto(arguments, config, path)
 
     if arguments["organize"]:
         if len(arguments["paths"]) > 0:

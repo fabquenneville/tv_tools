@@ -9,7 +9,8 @@ import sys
 import re
 import json
 
-from tmdbv3api import TMDb
+from tmdbv3api import TMDb, TV, Season
+from tmdbv3api.exceptions import TMDbException
 
 def load_arguments():
     ''' Get/load command parameters
@@ -89,12 +90,10 @@ def replace_ss(parent_path, old = " ", new = "_"):
     '''
     positive = False
     folderlist = get_content(parent_path)
-    # print(folderlist)
     for n in range(len(folderlist)):
         # dont act on hidden folders/files
         if "." != folderlist[n][0]:
             newname = folderlist[n].replace(old, new, 1)
-            # print(f'{parent_path + folderlist[n]} to {parent_path + newname}')
             os.rename(parent_path + folderlist[n],parent_path + newname)
             folderlist[n] = newname
             positive = True
@@ -281,22 +280,88 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
                 os.rename(f"{parent_path}{folderlist[n]}/{filelist[m]}",f"{parent_path}{folderlist[n]}/{newname}")
     return positive
 
-def replace_epiname_style_absolute(arguments, path, style_to = "standard"):
-    show_name = os.path.basename(os.path.normpath(path))
+def replace_epiname_style_absolute(arguments, config, path, style_to = "standard"):
     regex_from = re.compile(get_regexes("absolute"))
+    show_match = re.search(get_regexes("show_name"), os.path.basename(os.path.normpath(path)))
+    if not show_match:
+        return False
+    show_name = show_match.group(1)
+    show_year = show_match.group(2)
+    
+    # Getting TMDB data
+    show_tmdb = get_tmdb_show(config, show_name, show_year)
+    if not show_tmdb:
+        return False
+
+    # Getting items
     directories = []
     files = []
     for (dirpath, dirnames, filenames) in os.walk(path):
         directories.extend(dirnames)
         files.extend(filenames)
         break
-
     files = sorted(files, key=lambda x: get_filenumber(x))
+
+    season_ep_nb = {}
+    # Extracting the number of episodes
+    for season_nb, season_data in show_tmdb["seasons"].items():
+        season_ep_nb[season_nb] = len(season_data['episodes'])
+    season_ep_nb[0] = len([file for file in files if re.search(regex_from, file) and int(re.search(regex_from, file).group(1)) < 1])
+
     
 
-def replace_epiname_style(arguments, path, style_from, style_to = "standard"):
+
+
+
+    current_season_nb = 0
+    current_episode_nb = 1
+    for file in files:
+        # Removing file extension
+        filename = str(os.path.splitext(file)[0])
+
+        current_nb_match = re.search(regex_from, filename)
+        if not current_nb_match:
+            continue
+        replaced = current_nb_match[1]
+        replacing = ""
+        current_nb = int(replaced)
+
+        if current_episode_nb > season_ep_nb[current_season_nb]:
+            current_season_nb += 1
+            current_episode_nb = 1
+        
+        season_zeros, episode_zeros = get_zeros(
+            nb_season_items = season_ep_nb[current_season_nb],
+            season_nb = current_season_nb,
+            episode_number = current_episode_nb
+        )
+        replacing = f'S{season_zeros}{current_season_nb}E{episode_zeros}{current_episode_nb}'
+
+        newname = filename.replace(replaced, replacing)
+        # Adding back extension
+        newname += str(os.path.splitext(file)[1])
+        
+        if "print" in arguments["options"]:
+            print(f"{file:<45} -> {newname:<45}")
+            
+        if not "noact" in arguments["options"]:
+            os.rename(os.path.join(path, file), os.path.join(path, newname))
+        
+        current_episode_nb += 1
+
+
+        # print(f"/***********************************************************************/")
+        # print(f"file: '{file}'")
+        # print(f"replaced: '{replaced}'")
+        # print(f"current_nb: '{current_nb}'")
+        # print(f"current_season_nb: '{current_season_nb}'")
+        # print(f"current_episode_nb: '{current_episode_nb}'")
+        # print(f"/***********************************************************************/")
+    
+
+def replace_epiname_style(arguments, config, path, style_from, style_to = "standard"):
     if style_from == "absolute":
-        return replace_epiname_style_absolute(arguments, path, style_to = "standard")
+        return replace_epiname_style_absolute(arguments, config, path, style_to = "standard")
     regex_from = re.compile(get_regexes(style_from))
     directories = []
     files = []
@@ -349,7 +414,7 @@ def replace_epiname_style(arguments, path, style_from, style_to = "standard"):
             
 
 
-def auto(arguments, path):
+def auto(arguments, config, path):
     flat = False
     directories = []
     files = []
@@ -363,7 +428,7 @@ def auto(arguments, path):
     if flat:
         original_epiname_style = get_epiname_style(files)
         if original_epiname_style in ["xseparated", "flat", "absolute"]:
-            replace_epiname_style(arguments, path, original_epiname_style)
+            replace_epiname_style(arguments, config, path, original_epiname_style)
             
         organize_episodes(arguments, path)
 
@@ -409,7 +474,7 @@ def get_epiname_style(files):
 def get_filenumber(file):
     # Removing file extension
     filename = str(os.path.splitext(file)[0])
-    regex = re.compile(get_regexes("flat"))
+    regex = re.compile(get_regexes("absolute"))
     match = regex.search(filename)
     if not match:
         return False
@@ -417,7 +482,7 @@ def get_filenumber(file):
 
 def get_first_number(files):
     files = sorted(files, key=lambda x: get_filenumber(x))
-    regex = re.compile(get_regexes("flat"))
+    regex = re.compile(get_regexes("absolute"))
     for file in files:
         # Removing file extension
         file = str(os.path.splitext(file)[0])
@@ -432,8 +497,12 @@ def get_regexes(filter = "epinames_dict"):
         "standard_nozero":r"S([0-9]{1,3})E([0-9]{1,3})",
         "standard_minuscule":r"s([0-9]{2,3})e([0-9]{2,3})",
         "xseparated":r"([0-9]{1,3})x([0-9]{1,3})",
-        "flat":r"([0-9]{1,6})",
+        "flat":r"([1-9][0-9]+)",
+        "absolute":r"([0-9]+)",
     }
+    if filter == "show_name":
+        # Some time (1990)
+        return r"^(.+) \(([0-9]{4})\)$"
     for epiname_style, regex in epinames.items():
         if filter == epiname_style:
             return regex
@@ -485,3 +554,33 @@ def organize_episodes(arguments, path):
         if "print" in arguments["options"]:
             print(f"Moved {episodes_moved} episodes for season {season_number}")
         season_number += 1
+
+def get_tmdb_show(config, name, year):
+    if not config["tmdb"]["key"]:
+        return False
+
+    # TMDB Objects
+    tmdb = TMDb()
+    tmdb.api_key = config["tmdb"]["key"]
+    tv = TV()
+    season = Season()
+
+    # TMDB Show data
+    show = None
+    # Finding the show
+    for result in tv.search(name):
+        if name.lower() == result['name'].lower() and year == result['first_air_date'][:4]:
+            show = result
+    if not show:
+        return False
+    show["seasons"] = {}
+    # Finding the seasons
+    for i in range(1, 100):
+        try:
+            show_season = season.details(show["id"], i)
+            show["seasons"][i] = show_season
+        except TMDbException:
+            break
+    if len(show["seasons"]) <= 0:
+        return False
+    return show
