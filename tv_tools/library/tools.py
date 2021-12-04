@@ -531,6 +531,8 @@ def organize_episodes(arguments, path):
                 skip = True
                 break
         if skip:
+            run = True
+            season_number += 1
             continue
         if not run:
             break
