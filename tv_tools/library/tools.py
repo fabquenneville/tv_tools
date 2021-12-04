@@ -51,11 +51,6 @@ def load_arguments():
         for paramhead in ["-paths:"]:
             if paramhead in arg:
                 arguments[arg[1:len(paramhead) - 1]] += arg[len(paramhead):].split(",,")
-    
-    paths = arguments["paths"]
-    for n in range(len(paths)):
-        if arguments["paths"][n] != "/":
-            arguments["paths"][n] = arguments["paths"][n] + "/"
 
     return arguments
 
