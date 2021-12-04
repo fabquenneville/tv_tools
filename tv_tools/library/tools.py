@@ -348,15 +348,6 @@ def replace_epiname_style_absolute(arguments, config, path, style_to = "standard
             os.rename(os.path.join(path, file), os.path.join(path, newname))
         
         current_episode_nb += 1
-
-
-        # print(f"/***********************************************************************/")
-        # print(f"file: '{file}'")
-        # print(f"replaced: '{replaced}'")
-        # print(f"current_nb: '{current_nb}'")
-        # print(f"current_season_nb: '{current_season_nb}'")
-        # print(f"current_episode_nb: '{current_episode_nb}'")
-        # print(f"/***********************************************************************/")
     
 
 def replace_epiname_style(arguments, config, path, style_from, style_to = "standard"):
@@ -385,7 +376,7 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
         if style_from == "xseparated":
             season_nb = int(match[1])
             episode_nb = int(match[2])
-            nb_season_items = len([episode for episode in files if int(regex_from.search(episode)[1]) == season_nb])
+            nb_season_items = len([episode for episode in files if regex_from.search(episode) and int(regex_from.search(episode)[1]) == season_nb])
         elif style_from == "flat":
             if len(replaced) > 2 and len(replaced) <= 4:
                 season_nb = int(replaced[:-2])
@@ -411,9 +402,7 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
             
         if not "noact" in arguments["options"]:
             os.rename(os.path.join(path, file), os.path.join(path, newname))
-            
-
-
+         
 def auto(arguments, config, path):
     flat = False
     directories = []
