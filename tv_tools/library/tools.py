@@ -303,11 +303,6 @@ def replace_epiname_style_absolute(arguments, config, path, style_to = "standard
         season_ep_nb[season_nb] = len(season_data['episodes'])
     season_ep_nb[0] = len([file for file in files if re.search(regex_from, file) and int(re.search(regex_from, file).group(1)) < 1])
 
-    
-
-
-
-
     current_season_nb = 0
     current_episode_nb = 1
     for file in files:
@@ -514,21 +509,29 @@ def organize_episodes(arguments, path):
         files.extend(filenames)
         break
     
-    season_number = 1
+    season_number = 0
     run = True
     while run:
         season_formated_number = str(season_number).zfill(2)
         if season_number > 99:
             season_formated_number = str(season_number).zfill(3)
         folder_name = f"Season {season_formated_number}"
-        season_substring = f"S{season_formated_number}"
+        if season_number == 0:
+            folder_name = "Specials"
+        season_substring = f"S{season_formated_number}" # TODO Handle different naming styles
 
+        skip = False
         run = False
         for file in files:
             if season_substring in file:
                 episodes_found = True
                 run = True
                 break
+            elif season_number == 0:
+                skip = True
+                break
+        if skip:
+            continue
         if not run:
             break
 
