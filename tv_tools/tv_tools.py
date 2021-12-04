@@ -3,22 +3,16 @@
     tv_tools is a Python command line tool to rename TV episodes from an absolute to an aired order.
         * Rename all TV episodes in a file structure to the S00E00 standard
     ex:
-    tv_tools -options:print,noact -paths:/mnt/media/
+    tv_tools -options:print,noexec -paths:/mnt/media/
 
 
     options:
         print       : print more detailed information
-        noact       : dont act
+        noexec      : dont execute the operations
         doubleep    : if video files contain two episodes each
         keepep      : keep the episode number
         preserve    : Preserve the filename except for a marker (*** by default)
 '''
-
-# TODO functions commands to be revised
-import os
-import shutil
-
-from pathlib import Path
 
 # Normal import
 try:

@@ -192,7 +192,7 @@ def add_numbering(arguments, parent_path, episode_per_file = 1):
             newname = filelist[m].replace(arguments["marker"], newepnum, 1)
             if "print" in arguments["options"]:
                 print(f"{folderlist[n]:<25}/{filelist[m]:<50} -> {folderlist[n]:<25}/{newname:<50}")
-            if not "noact" in arguments["options"]:
+            if not "noexec" in arguments["options"]:
                 os.rename(f"{parent_path}{folderlist[n]}/{filelist[m]}",f"{parent_path}{folderlist[n]}/{newname}")
             positive = True
     return positive
@@ -271,7 +271,7 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
                 positive = True
             if "print" in arguments["options"]:
                 print(f"{folderlist[n]:<25}/{filelist[m]:<45} -> {folderlist[n]:<25}/{newname:<45}")
-            if not "noact" in arguments["options"]:
+            if not "noexec" in arguments["options"]:
                 os.rename(f"{parent_path}{folderlist[n]}/{filelist[m]}",f"{parent_path}{folderlist[n]}/{newname}")
     return positive
 
@@ -339,7 +339,7 @@ def replace_epiname_style_absolute(arguments, config, path, style_to = "standard
         if "print" in arguments["options"]:
             print(f"{file:<45} -> {newname:<45}")
             
-        if not "noact" in arguments["options"]:
+        if not "noexec" in arguments["options"]:
             os.rename(os.path.join(path, file), os.path.join(path, newname))
         
         current_episode_nb += 1
@@ -368,7 +368,7 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
         season_nb = None
         episode_nb = None
         nb_season_items = 0
-        if style_from == "xseparated":
+        if style_from in ["standard_minuscule", "xseparated"]:
             season_nb = int(match[1])
             episode_nb = int(match[2])
             nb_season_items = len([episode for episode in files if regex_from.search(episode) and int(regex_from.search(episode)[1]) == season_nb])
@@ -395,7 +395,7 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
         if "print" in arguments["options"]:
             print(f"{file:<45} -> {newname:<45}")
             
-        if not "noact" in arguments["options"]:
+        if not "noexec" in arguments["options"]:
             os.rename(os.path.join(path, file), os.path.join(path, newname))
          
 def auto(arguments, config, path):
@@ -408,13 +408,24 @@ def auto(arguments, config, path):
         break
     if len(directories) == 0:
         flat = True
+    else:
+        match = False
+        for directory in directories:
+            regex = get_regexes("season_folder")
+            if re.search(regex, directory):
+                match = True
+        if not match:
+            flat = True
+        
     
     if flat:
         original_epiname_style = get_epiname_style(files)
-        if original_epiname_style in ["xseparated", "flat", "absolute"]:
+        if original_epiname_style in ["standard_minuscule", "xseparated", "flat", "absolute"]:
             replace_epiname_style(arguments, config, path, original_epiname_style)
             
         organize_episodes(arguments, path)
+    else:
+        print(f"Not Flat")
 
 def get_zeros(nb_season_items, season_nb, episode_number):
 
@@ -487,6 +498,9 @@ def get_regexes(filter = "epinames_dict"):
     if filter == "show_name":
         # Some time (1990)
         return r"^(.+) \(([0-9]{4})\)$"
+    if filter == "season_folder":
+        # s01/S01|Season 01/season_01
+        return r"([Ss]([0-9]{1,3}))|([Ss][Ee][Aa][Ss][Oo][Nn][ \_\-.]*([0-9]{1,3}))"
     for epiname_style, regex in epinames.items():
         if filter == epiname_style:
             return regex
@@ -524,7 +538,7 @@ def organize_episodes(arguments, path):
             if "print" in arguments["options"]:
                 print(f"Created directory: {fpath}")
 
-            if not "noact" in arguments["options"]:
+            if not "noexec" in arguments["options"]:
                 os.mkdir(fpath)
             
             directories.append(folder_name)
@@ -532,7 +546,7 @@ def organize_episodes(arguments, path):
         episodes_moved = 0
         for filename in files:
             if season_substring in filename:
-                if not "noact" in arguments["options"]:
+                if not "noexec" in arguments["options"]:
                     shutil.move(os.path.join(path, filename), os.path.join(path, folder_name, filename))
                 episodes_moved += 1
         if "print" in arguments["options"]:
