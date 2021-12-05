@@ -363,7 +363,7 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
         season_nb = None
         episode_nb = None
         nb_season_items = 0
-        if style_from in ["standard_minuscule", "xseparated"]:
+        if style_from in ["standard_minuscule", "xseparated", "standard_separated"]:
             season_nb = int(match[1])
             episode_nb = int(match[2])
             nb_season_items = len([episode for episode in files if regex_from.search(episode) and int(regex_from.search(episode)[1]) == season_nb])
@@ -415,7 +415,7 @@ def auto(arguments, config, path):
     
     if flat:
         original_epiname_style = get_epiname_style(files)
-        if original_epiname_style in ["standard_minuscule", "xseparated", "flat", "absolute"]:
+        if original_epiname_style in ["standard_minuscule", "standard_separated", "xseparated", "flat", "absolute"]:
             replace_epiname_style(arguments, config, path, original_epiname_style)
             
         organize_episodes(arguments, path)
@@ -486,6 +486,8 @@ def get_regexes(filter = "epinames_dict"):
         "standard":r"S([0-9]{2,3})E([0-9]{2,3})",
         "standard_nozero":r"S([0-9]{1,3})E([0-9]{1,3})",
         "standard_minuscule":r"s([0-9]{2,3})e([0-9]{2,3})",
+        "standard_singledigit":r"S([0-9]{1,3})E([0-9]{1,3})",
+        "standard_separated":r"S([0-9]{1,3})[ -_.]*E([0-9]{1,3})",
         "xseparated":r"([0-9]{1,3})x([0-9]{1,3})",
         "flat":r"([1-9][0-9]+)",
         "absolute":r"([0-9]+)",
