@@ -275,8 +275,8 @@ def replace_absolute(arguments, parent_path, episode_per_file = 1):
                 os.rename(f"{parent_path}{folderlist[n]}/{filelist[m]}",f"{parent_path}{folderlist[n]}/{newname}")
     return positive
 
-def replace_epiname_style_absolute(arguments, config, path, style_to = "standard"):
-    regex_from = re.compile(get_regexes("absolute"))
+def replace_epiname_style_absolute(arguments, config, path, style_from = "absolute", style_to = "standard"):
+    regex_from = re.compile(get_regexes(style_from))
     show_match = re.search(get_regexes("show_name"), os.path.basename(os.path.normpath(path)))
     if not show_match:
         return False
@@ -297,10 +297,12 @@ def replace_epiname_style_absolute(arguments, config, path, style_to = "standard
         break
     files = sorted(files, key=lambda x: get_filenumber(x))
 
-    season_ep_nb = {}
     # Extracting the number of episodes
+    # Seasons
+    season_ep_nb = {}
     for season_nb, season_data in show_tmdb["seasons"].items():
         season_ep_nb[season_nb] = len(season_data['episodes'])
+    # Finding specials (number 0 or under) in files
     season_ep_nb[0] = len([file for file in files if re.search(regex_from, file) and int(re.search(regex_from, file).group(1)) < 1])
 
     current_season_nb = 0
@@ -309,12 +311,11 @@ def replace_epiname_style_absolute(arguments, config, path, style_to = "standard
         # Removing file extension
         filename = str(os.path.splitext(file)[0])
 
-        current_nb_match = re.search(regex_from, filename)
-        if not current_nb_match:
+        match = re.search(regex_from, filename)
+        if not match:
             continue
-        replaced = current_nb_match[1]
+        replaced = match.group(0)
         replacing = ""
-        current_nb = int(replaced)
 
         if current_episode_nb > season_ep_nb[current_season_nb]:
             current_season_nb += 1
@@ -341,8 +342,8 @@ def replace_epiname_style_absolute(arguments, config, path, style_to = "standard
     
 
 def replace_epiname_style(arguments, config, path, style_from, style_to = "standard"):
-    if style_from == "absolute":
-        return replace_epiname_style_absolute(arguments, config, path, style_to = "standard")
+    if style_from in ["eabsolute", "absolute"]:
+        return replace_epiname_style_absolute(arguments, config, path, style_from, style_to = "standard")
     regex_from = re.compile(get_regexes(style_from))
     directories = []
     files = []
@@ -415,7 +416,8 @@ def auto(arguments, config, path):
     
     if flat:
         original_epiname_style = get_epiname_style(files)
-        if original_epiname_style in ["standard_minuscule", "standard_separated", "xseparated", "flat", "absolute"]:
+        
+        if original_epiname_style in ["standard_minuscule", "standard_separated", "xseparated", "eabsolute", "flat", "absolute"]:
             replace_epiname_style(arguments, config, path, original_epiname_style)
             
         organize_episodes(arguments, path)
@@ -489,6 +491,7 @@ def get_regexes(filter = "epinames_dict"):
         "standard_singledigit":r"S([0-9]{1,3})E([0-9]{1,3})",
         "standard_separated":r"S([0-9]{1,3})[ -_.]*E([0-9]{1,3})",
         "xseparated":r"([0-9]{1,3})x([0-9]{1,3})",
+        "eabsolute":r"[e|E]([0-9]+)",
         "flat":r"([1-9][0-9]+)",
         "absolute":r"([0-9]+)",
     }
