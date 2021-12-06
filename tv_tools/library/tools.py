@@ -9,6 +9,7 @@ import sys
 import re
 import json
 
+from difflib import SequenceMatcher
 from tmdbv3api import TMDb, TV, Season
 from tmdbv3api.exceptions import TMDbException
 
@@ -320,7 +321,9 @@ def replace_epiname_style_absolute(arguments, config, path, style_from = "absolu
         if current_episode_nb > season_ep_nb[current_season_nb]:
             current_season_nb += 1
             current_episode_nb = 1
-        
+        if current_season_nb > max(season_ep_nb.keys()):
+            break
+
         season_zeros, episode_zeros = get_zeros(
             nb_season_items = season_ep_nb[current_season_nb],
             season_nb = current_season_nb,
@@ -342,7 +345,7 @@ def replace_epiname_style_absolute(arguments, config, path, style_from = "absolu
     
 
 def replace_epiname_style(arguments, config, path, style_from, style_to = "standard"):
-    if style_from in ["eabsolute", "absolute"]:
+    if style_from in ["absolute_e", "absolute_ep", "absolute", "absolute_sign"]:
         return replace_epiname_style_absolute(arguments, config, path, style_from, style_to = "standard")
     regex_from = re.compile(get_regexes(style_from))
     directories = []
@@ -351,7 +354,7 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
         directories.extend(dirnames)
         files.extend(filenames)
         break
-    
+
     for file in files:
         # Removing file extension
         filename = str(os.path.splitext(file)[0])
@@ -364,9 +367,9 @@ def replace_epiname_style(arguments, config, path, style_from, style_to = "stand
         season_nb = None
         episode_nb = None
         nb_season_items = 0
-        if style_from in ["standard_minuscule", "xseparated", "standard_separated"]:
-            season_nb = int(match[1])
-            episode_nb = int(match[2])
+        if style_from in ["standard_nozero", "standard_minuscule", "xseparated", "standard_separated", "standard_ep", "fully_spelled"]:
+            season_nb = int(match.group(1))
+            episode_nb = int(match.group(2))
             nb_season_items = len([episode for episode in files if regex_from.search(episode) and int(regex_from.search(episode)[1]) == season_nb])
         elif style_from == "flat":
             if len(replaced) > 2 and len(replaced) <= 4:
@@ -416,8 +419,10 @@ def auto(arguments, config, path):
     
     if flat:
         original_epiname_style = get_epiname_style(files)
+        # print(f"original_epiname_style: {original_epiname_style}")
+        # exit()
         
-        if original_epiname_style in ["standard_minuscule", "standard_separated", "xseparated", "eabsolute", "flat", "absolute"]:
+        if original_epiname_style in ["standard_nozero", "standard_minuscule", "standard_separated", "standard_ep", "xseparated", "fully_spelled", "absolute_sign", "absolute_e", "absolute_ep", "flat", "absolute"]:
             replace_epiname_style(arguments, config, path, original_epiname_style)
             
         organize_episodes(arguments, path)
@@ -489,9 +494,13 @@ def get_regexes(filter = "epinames_dict"):
         "standard_nozero":r"S([0-9]{1,3})E([0-9]{1,3})",
         "standard_minuscule":r"s([0-9]{2,3})e([0-9]{2,3})",
         "standard_singledigit":r"S([0-9]{1,3})E([0-9]{1,3})",
-        "standard_separated":r"S([0-9]{1,3})[ -_.]*E([0-9]{1,3})",
+        "standard_ep":r"S([0-9]{1,3})[eE][Pp]([0-9]{1,3})",
+        "standard_separated":r"[sS]([0-9]{1,3})[ \_\-\.]*[eE]([0-9]{1,3})",
+        "fully_spelled":r"[sS][eE][aA][sS][oO][nN][ \_\-\.]*([0-9]{1,3})[ \_\-\.]*[eE][Pp][iI][sS][oO][dD][eE][ \_\-\.]*([0-9]{1,3})",
         "xseparated":r"([0-9]{1,3})x([0-9]{1,3})",
-        "eabsolute":r"[e|E]([0-9]+)",
+        "absolute_sign":r"#([0-9]+)",
+        "absolute_e":r"[eE]([0-9]+)",
+        "absolute_ep":r"[eE][pP]([0-9]+)",
         "flat":r"([1-9][0-9]+)",
         "absolute":r"([0-9]+)",
     }
@@ -500,7 +509,7 @@ def get_regexes(filter = "epinames_dict"):
         return r"^(.+) \(([0-9]{4})\)$"
     if filter == "season_folder":
         # s01/S01|Season 01/season_01
-        return r"([Ss]([0-9]{1,3}))|([Ss][Ee][Aa][Ss][Oo][Nn][ \_\-.]*([0-9]{1,3}))"
+        return r"([sS]([0-9]{1,3}))|([sS][eE][aA][sS][oO][nN][ \_\-\.]*([0-9]{1,3}))"
     for epiname_style, regex in epinames.items():
         if filter == epiname_style:
             return regex
@@ -576,9 +585,20 @@ def get_tmdb_show(config, name, year):
     # TMDB Show data
     show = None
     # Finding the show
-    for result in tv.search(name):
+    tmdb_results = tv.search(name)
+    for result in tmdb_results:
         if name.lower() == result['name'].lower() and year == result['first_air_date'][:4]:
             show = result
+    if not show:
+        top_ratio = 0
+        top_result = None
+        for result in tmdb_results:
+            simratio = SequenceMatcher(None, name.lower(), result['name'].lower()).ratio()
+            if simratio > top_ratio and simratio > 0.8:
+                top_ratio = simratio
+                top_result = result
+        if top_result:
+            show = top_result
     if not show:
         return False
     show["seasons"] = {}
